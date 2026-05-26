@@ -1,0 +1,23 @@
+volumes:
+  cache_data:
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mob_crypto_dev
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - cache_data:/data
+    ports:
+      - "6379:6379"
+
+
