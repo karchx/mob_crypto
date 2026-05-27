@@ -11,8 +11,6 @@ defmodule MobCrypto.Accounts.UserToken do
   # It is very important to keep the magic link token expiry short,
   # since someone with access to the email may take over the account.
   @magic_link_validity_in_minutes 15
-  @change_email_validity_in_days 7
-  @session_validity_in_days 14
 
   @doc """
   Generates a token that will be stored in a signed place,
@@ -20,7 +18,7 @@ defmodule MobCrypto.Accounts.UserToken do
   tokens do not need to be hashed.
   """
   def build_session_token(user) do
-    ttl = 86_400 * 7
+    ttl = 60 * @magic_link_validity_in_minutes
     {public_token, hashed_token} = generate_token_pair()
 
     dt = user.authenticated_at || DateTime.utc_now(:second)
@@ -47,7 +45,7 @@ defmodule MobCrypto.Accounts.UserToken do
   def build_email_token(user, context) do
     {public_token, hashed_token} = generate_token_pair()
 
-    ttl = 900 # 15 minutes
+    ttl = 60 * @magic_link_validity_in_minutes # 15 minutes
     save_email_token_to_redis!(user.email, context, hashed_token, ttl)
 
     public_token
@@ -83,6 +81,34 @@ defmodule MobCrypto.Accounts.UserToken do
     {:ok, _} = Redix.command(:redix, ["SETEX", key, to_string(ttl), email])
 
     :ok
+  end
+
+  def verify_session_token(token, context \\ "login") do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = 
+          :crypto.hash(@hash_algorithm, decoded_token)
+          |> Base.url_encode64(padding: false)
+
+        key = "email_token:#{context}:#{hashed_token}"
+
+        case Redix.command(:redix, ["GETDEL", key]) do
+          {:ok, email} when is_binary(email) ->
+            case Repo.get_by(User, email: email) do
+              nil -> :error
+              user -> {:ok, user}
+            end
+
+          {:ok, nil} ->
+            :error
+
+          {:error, _reason} ->
+            :error
+        end
+
+      :error ->
+        :error
+    end
   end
 
   @doc """

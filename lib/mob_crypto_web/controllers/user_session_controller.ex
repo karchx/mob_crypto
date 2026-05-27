@@ -20,12 +20,12 @@ defmodule MobCryptoWeb.UserSessionController do
       end
 
     case Accounts.login_user_by_magic_link(token) do
-      {:ok, {user, _expired_tokens}} ->
+      %MobCrypto.Accounts.User{} = user ->
         conn
         |> put_flash(:info, info)
         |> UserAuth.log_in_user(user, user_params)
 
-      {:error, :not_found} ->
+      nil ->
         conn
         |> put_flash(:error, "The link is invalid or it has expired.")
         |> render(:new, form: Phoenix.Component.to_form(%{}, as: "user"))
