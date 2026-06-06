@@ -4,7 +4,7 @@ GSEXpense is a data lake and statistical analysis tool for personal finance, plu
 
 ## ER base data lake
 ```
-+----------------------+
+                  +----------------------+
                   |       dim_time       |
                   +----------------------+
                   | pk_date (int)        |
